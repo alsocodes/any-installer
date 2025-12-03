@@ -6,4 +6,4 @@ Script untuk install apapun
 Auto install:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/<username>/<repo>/main/install-node-exporter.sh | bash
+curl -sSL https://raw.githubusercontent.com/alsocodes/any-installer/main/install-node-exporter.sh | bash
