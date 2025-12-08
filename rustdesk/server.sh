@@ -30,7 +30,8 @@ if [[ -n "$LATEST" ]]; then
 else
     echo "❗ Gagal mendapatkan versi terbaru dari GitHub API."
     echo "Menggunakan fallback versi stabil 1.1.10..."
-    DOWNLOAD_URL="https://github.com/rustdesk/rustdesk-server/releases/download/1.1.10/rustdesk-server-linux-x64.zip"
+    # DOWNLOAD_URL="https://github.com/rustdesk/rustdesk-server/releases/download/1.1.10/rustdesk-server-linux-x64.zip"
+    DOWNLOAD_URL="https://github.com/rustdesk/rustdesk-server/releases/download/1.1.14/rustdesk-server-linux-amd64.zip"
 fi
 
 echo ""
