@@ -16,8 +16,14 @@ cd /var/lib/rustdesk
 
 echo "===== Downloading latest RustDesk Server release ====="
 LATEST=$(curl -s https://api.github.com/repos/rustdesk/rustdesk-server/releases/latest | grep browser_download_url | grep linux-x64 | cut -d '"' -f 4)
+
+if [[ -z "$LATEST" ]]; then
+    echo "ERROR: Tidak bisa mendapatkan release RustDesk server."
+    exit 1
+fi
+
 wget -O rustdesk-server.zip "$LATEST"
-unzip rustdesk-server.zip
+unzip -o rustdesk-server.zip
 mv hbbs hbbr /usr/local/bin/
 chmod +x /usr/local/bin/hbbs /usr/local/bin/hbbr
 rm rustdesk-server.zip
@@ -80,5 +86,5 @@ echo "Relay Server  : $PUBLIC_IP"
 echo "Key (pub)     :"
 cat /var/lib/rustdesk/id_ed25519.pub
 echo ""
-echo "Copy key di atas ke RustDesk client (menu settings → ID/Relay Server)."
+echo "Masukkan key di atas di RustDesk client (Settings → ID/Relay Server)."
 echo "========================================================="
