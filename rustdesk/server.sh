@@ -5,32 +5,47 @@ echo "===== RustDesk Server Auto Installer (HBBS + HBBR) ====="
 echo "Detecting public IP..."
 PUBLIC_IP=$(curl -s ifconfig.me || echo "0.0.0.0")
 echo "Detected IP: $PUBLIC_IP"
+echo ""
 
 echo "===== Installing dependencies ====="
 apt update
 apt install -y build-essential pkg-config libssl-dev libclang-dev curl unzip ufw
 
-echo "===== Creating directories ====="
+echo ""
+echo "===== Preparing directories ====="
 mkdir -p /var/lib/rustdesk
 cd /var/lib/rustdesk
 
-echo "===== Downloading latest RustDesk Server release ====="
-LATEST=$(curl -s https://api.github.com/repos/rustdesk/rustdesk-server/releases/latest | grep browser_download_url | grep linux-x64 | cut -d '"' -f 4)
+echo ""
+echo "===== Fetching RustDesk latest version... ====="
+LATEST=$(curl -s https://api.github.com/repos/rustdesk/rustdesk-server/releases/latest \
+    | grep browser_download_url \
+    | grep linux-x64 \
+    | cut -d '"' -f 4)
 
-if [[ -z "$LATEST" ]]; then
-    echo "ERROR: Tidak bisa mendapatkan release RustDesk server."
-    exit 1
+if [[ -n "$LATEST" ]]; then
+    echo "Latest version found:"
+    echo "$LATEST"
+    DOWNLOAD_URL="$LATEST"
+else
+    echo "❗ Gagal mendapatkan versi terbaru dari GitHub API."
+    echo "Menggunakan fallback versi stabil 1.1.10..."
+    DOWNLOAD_URL="https://github.com/rustdesk/rustdesk-server/releases/download/1.1.10/rustdesk-server-linux-x64.zip"
 fi
 
-wget -O rustdesk-server.zip "$LATEST"
+echo ""
+echo "===== Downloading RustDesk Server ====="
+wget -O rustdesk-server.zip "$DOWNLOAD_URL"
 unzip -o rustdesk-server.zip
 mv hbbs hbbr /usr/local/bin/
 chmod +x /usr/local/bin/hbbs /usr/local/bin/hbbr
 rm rustdesk-server.zip
 
-echo "===== Generating keys ====="
+echo ""
+echo "===== Generating encryption keys ====="
 /usr/local/bin/hbbs -g 2>/dev/null || true
 
+echo ""
 echo "===== Creating systemd service: HBBS ====="
 cat >/etc/systemd/system/hbbs.service <<EOF
 [Unit]
@@ -63,11 +78,13 @@ User=root
 WantedBy=multi-user.target
 EOF
 
-echo "===== Reloading daemon + enabling services ====="
+echo ""
+echo "===== Enabling & starting services ====="
 systemctl daemon-reload
 systemctl enable --now hbbs
 systemctl enable --now hbbr
 
+echo ""
 echo "===== Opening firewall ====="
 ufw allow 21114 || true
 ufw allow 21115 || true
@@ -83,8 +100,9 @@ echo ""
 echo "===== CLIENT CONFIG ====="
 echo "ID Server     : $PUBLIC_IP"
 echo "Relay Server  : $PUBLIC_IP"
-echo "Key (pub)     :"
+echo ""
+echo "Public Key:"
 cat /var/lib/rustdesk/id_ed25519.pub
 echo ""
-echo "Masukkan key di atas di RustDesk client (Settings → ID/Relay Server)."
+echo "Masukkan key di atas ke RustDesk client (Settings → ID/Relay Server)."
 echo "========================================================="
