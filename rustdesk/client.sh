@@ -3,15 +3,14 @@ set -e
 
 # =======================
 # RustDesk Client Installer
-# Usage:
-#   sudo sh install-rustdesk-client.sh <SERVER_IP> "<PUBLIC_KEY>"
 # =======================
 
-if [ -z "$1" ] || [ -z "$2" ]; then
+if [ -z "$SERVER_IP" ] || [ -z "$SERVER_KEY" ]; then
+    echo "❌ ERROR: Variabel lingkungan tidak ada."
     echo ""
-    echo "❌ ERROR: Argumen kurang."
     echo "Cara pakai:"
-    echo "  sudo sh $0 <SERVER_IP> \"<PUBLIC_KEY>\""
+    echo "SERVER_IP=\"1.2.3.4\" SERVER_KEY=\"PUB_KEY\" \\"
+    echo "  curl -sSL https://raw.githubusercontent.com/alsocodes/any-installer/main/rustdesk/client.sh | bash"
     echo ""
     exit 1
 fi
