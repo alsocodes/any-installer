@@ -1,53 +1,56 @@
 #!/bin/bash
 set -e
 
-echo "===== RustDesk Server Auto Installer (HBBS + HBBR) ====="
-echo "Detecting public IP..."
+echo "===== RustDesk Server Auto Installer ====="
 PUBLIC_IP=$(curl -s ifconfig.me || echo "0.0.0.0")
-echo "Detected IP: $PUBLIC_IP"
-echo ""
+echo "Detected public IP: $PUBLIC_IP"
 
-echo "===== Installing dependencies ====="
 apt update
 apt install -y build-essential pkg-config libssl-dev libclang-dev curl unzip ufw
 
-echo ""
-echo "===== Preparing directories ====="
 mkdir -p /var/lib/rustdesk
 cd /var/lib/rustdesk
 
-echo ""
-echo "===== Fetching RustDesk latest version... ====="
+echo "Fetching latest RustDesk release..."
 LATEST=$(curl -s https://api.github.com/repos/rustdesk/rustdesk-server/releases/latest \
-    | grep browser_download_url \
-    | grep linux-x64 \
-    | cut -d '"' -f 4)
+  | grep browser_download_url \
+  | grep linux-amd64.zip \
+  | cut -d '"' -f 4)
 
 if [[ -n "$LATEST" ]]; then
-    echo "Latest version found:"
-    echo "$LATEST"
     DOWNLOAD_URL="$LATEST"
 else
-    echo "❗ Gagal mendapatkan versi terbaru dari GitHub API."
-    echo "Menggunakan fallback versi stabil 1.1.10..."
-    # DOWNLOAD_URL="https://github.com/rustdesk/rustdesk-server/releases/download/1.1.10/rustdesk-server-linux-x64.zip"
+    echo "API failed — using fallback version 1.1.14"
     DOWNLOAD_URL="https://github.com/rustdesk/rustdesk-server/releases/download/1.1.14/rustdesk-server-linux-amd64.zip"
 fi
 
-echo ""
-echo "===== Downloading RustDesk Server ====="
+echo "Downloading RustDesk..."
 wget -O rustdesk-server.zip "$DOWNLOAD_URL"
+
+echo "Extracting..."
 unzip -o rustdesk-server.zip
-mv hbbs hbbr /usr/local/bin/
+
+# Auto detect folder
+if [[ -f "hbbs" && -f "hbbr" ]]; then
+    SRC_PATH="."
+elif [[ -f "amd64/hbbs" && -f "amd64/hbbr" ]]; then
+    SRC_PATH="amd64"
+else
+    echo "❗ ERROR: hbbs/hbbr not found in extracted archive!"
+    exit 1
+fi
+
+echo "Using binary path: $SRC_PATH"
+cp "$SRC_PATH/hbbs" /usr/local/bin/
+cp "$SRC_PATH/hbbr" /usr/local/bin/
 chmod +x /usr/local/bin/hbbs /usr/local/bin/hbbr
+
 rm rustdesk-server.zip
 
-echo ""
-echo "===== Generating encryption keys ====="
+echo "Generating keys..."
 /usr/local/bin/hbbs -g 2>/dev/null || true
 
-echo ""
-echo "===== Creating systemd service: HBBS ====="
+echo "Creating HBBS service..."
 cat >/etc/systemd/system/hbbs.service <<EOF
 [Unit]
 Description=RustDesk HBBS Service
@@ -63,7 +66,7 @@ User=root
 WantedBy=multi-user.target
 EOF
 
-echo "===== Creating systemd service: HBBR ====="
+echo "Creating HBBR service..."
 cat >/etc/systemd/system/hbbr.service <<EOF
 [Unit]
 Description=RustDesk HBBR Relay Service
@@ -79,31 +82,16 @@ User=root
 WantedBy=multi-user.target
 EOF
 
-echo ""
-echo "===== Enabling & starting services ====="
 systemctl daemon-reload
 systemctl enable --now hbbs
 systemctl enable --now hbbr
 
-echo ""
-echo "===== Opening firewall ====="
 ufw allow 21114 || true
 ufw allow 21115 || true
 ufw allow 21116 || true
 ufw allow 21117 || true
 
-echo ""
-echo "===== INSTALLATION COMPLETE ====="
-echo "Public IP     : $PUBLIC_IP"
-echo "HBBS Status   : $(systemctl is-active hbbs)"
-echo "HBBR Status   : $(systemctl is-active hbbr)"
-echo ""
-echo "===== CLIENT CONFIG ====="
-echo "ID Server     : $PUBLIC_IP"
-echo "Relay Server  : $PUBLIC_IP"
-echo ""
+echo "===== INSTALLATION DONE ====="
+echo "ID / Relay Server: $PUBLIC_IP"
 echo "Public Key:"
 cat /var/lib/rustdesk/id_ed25519.pub
-echo ""
-echo "Masukkan key di atas ke RustDesk client (Settings → ID/Relay Server)."
-echo "========================================================="
