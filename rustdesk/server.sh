@@ -29,69 +29,51 @@ wget -O rustdesk-server.zip "$DOWNLOAD_URL"
 
 echo "Extracting..."
 unzip -o rustdesk-server.zip
+rm rustdesk-server.zip
 
-# Auto detect folder
-if [[ -f "hbbs" && -f "hbbr" ]]; then
-    SRC_PATH="."
-elif [[ -f "amd64/hbbs" && -f "amd64/hbbr" ]]; then
-    SRC_PATH="amd64"
+# --- FIX: detect real folder (amd64/) ---
+if [[ -d "amd64" ]]; then
+    BIN_DIR="amd64"
 else
-    echo "❗ ERROR: hbbs/hbbr not found in extracted archive!"
+    echo "ERROR: Folder amd64 tidak ditemukan!"
+    ls -lah
     exit 1
 fi
 
-echo "Using binary path: $SRC_PATH"
-cp "$SRC_PATH/hbbs" /usr/local/bin/
-cp "$SRC_PATH/hbbr" /usr/local/bin/
+cp "$BIN_DIR/hbbs" /usr/local/bin/
+cp "$BIN_DIR/hbbr" /usr/local/bin/
 chmod +x /usr/local/bin/hbbs /usr/local/bin/hbbr
 
-rm rustdesk-server.zip
-
 echo "Generating keys..."
-/usr/local/bin/hbbs -g 2>/dev/null || true
+/usr/local/bin/hbbs -g || true
 
-echo "Creating HBBS service..."
-cat >/etc/systemd/system/hbbs.service <<EOF
-[Unit]
-Description=RustDesk HBBS Service
-After=network.target
+# ---------- FIX PUBLIC KEY ----------
+KEY_PATH="/var/lib/rustdesk/.config/rustdesk/id_ed25519.pub"
 
-[Service]
-ExecStart=/usr/local/bin/hbbs -k /var/lib/rustdesk/id_ed25519 -r $PUBLIC_IP:21117
-WorkingDirectory=/var/lib/rustdesk
-Restart=always
-User=root
+if [[ ! -f "$KEY_PATH" ]]; then
+    echo "Key belum muncul, regenerate..."
+    /usr/local/bin/hbbs -g || true
+fi
 
-[Install]
-WantedBy=multi-user.target
-EOF
+if [[ ! -f "$KEY_PATH" ]]; then
+    echo "❌ ERROR: Key still not found!"
+    echo "Expected at: $KEY_PATH"
+    exit 1
+fi
 
-echo "Creating HBBR service..."
-cat >/etc/systemd/system/hbbr.service <<EOF
-[Unit]
-Description=RustDesk HBBR Relay Service
-After=network.target
+echo "Copying key to /var/lib/rustdesk/"
+cp /var/lib/rustdesk/.config/rustdesk/id_ed25519 /var/lib/rustdesk/
+cp /var/lib/rustdesk/.config/rustdesk/id_ed25519.pub /var/lib/rustdesk/
 
-[Service]
-ExecStart=/usr/local/bin/hbbr -k /var/lib/rustdesk/id_ed25519
-WorkingDirectory=/var/lib/rustdesk
-Restart=always
-User=root
+# -------------------------------------
 
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl daemon-reload
-systemctl enable --now hbbs
-systemctl enable --now hbbr
-
-ufw allow 21114 || true
-ufw allow 21115 || true
-ufw allow 21116 || true
-ufw allow 21117 || true
-
-echo "===== INSTALLATION DONE ====="
-echo "ID / Relay Server: $PUBLIC_IP"
+echo ""
+echo "===== INSTALLATION COMPLETE ====="
+echo "ID Server : $PUBLIC_IP"
+echo "Relay     : $PUBLIC_IP"
+echo ""
 echo "Public Key:"
 cat /var/lib/rustdesk/id_ed25519.pub
+echo ""
+echo "Paste key ke RustDesk client → Settings → ID/Relay Server"
+echo "========================================================="
